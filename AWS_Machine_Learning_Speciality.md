@@ -255,7 +255,7 @@ When an AWS Glue crawler scans Amazon S3 and detects multiple folders in a bucke
 
 Use AWS Data Pipeline to archive your web server's logs to Amazon S3 each day and then run a weekly Amazon EMR (Amazon EMR) cluster over those logs to generate traffic reports. AWS Data Pipeline schedules the daily tasks to copy data and the weekly task to launch the Amazon EMR cluster. AWS Data Pipeline also ensures that Amazon EMR waits for the final day's data to be uploaded to Amazon S3 before it begins its analysis, even if there is an unforeseen delay in uploading the logs.
 
-![Use Case](pipeline.jpg)
+![Use Case](./images/pipeline.jpg)
 
 ### AWS Batch
 
@@ -267,7 +267,7 @@ Use AWS Data Pipeline to archive your web server's logs to Amazon S3 each day an
 - For any computing job regardless of the job
 - Using EC2 instances
 
-![AWS Batch](batch.jpg)
+![AWS Batch](./images/batch.jpg)
 
 ### AWS Step Function
 
