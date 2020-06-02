@@ -280,3 +280,162 @@ Use AWS Data Pipeline to archive your web server's logs to Amazon S3 each day an
 - In batch job where we check success and failure
 
 ## Exploratory Data Analysis(24%)
+
+**Key Performance Indicator**
+
+- **Net Promoter Score (NPS)**:How likely is it for a customer to recommend your product or service to a friend?
+- **Customer Profitability Score (CPS)**: How much profit does a customer bring to your business after deducting customer acquisition and customer retention costs?
+- **Conversion Rate**: How many leads get converted to customers?
+  Relative Market Share: How big is your slice of the pie compared to your competitors in the market?
+- **Net Profit Margin:** The percent of your revenue which is net profit.
+
+**Relationships Plot**
+
+- Scatter Plot (**For two variables**):
+  Relating Marketing Spend to Sales Revenue. Here you could show Marketing Spend on the X-axis and Sales Revenue on the Y-axis.
+- Bubble Chart (**Three variables**):
+  Relating ROI, Investment Time, and Investment Size. Here the X-axis would be the Investment Time, the Y-axis would be ROI, and the size of the Bubble would be Investment Size.
+
+### AWS Athena
+
+- An interactive query service to analyse data in S3 without loading data, data stays in S3
+- Serverless
+- Support different data formats
+- It can be integrated with Jupyter, Zeppelin etc
+- Use Case: Web logs, CloudTrail, querying staging data before loading to a data warehouse
+- Integrate with QuickSight and other tool with JDBC/ODBC
+- **Keeping data in columnar format or compressed like Parquet format reduce the cost because it can find data directly what it need**
+- Example pipeline with Glue+Athena+Quicksight
+- **Do not use Athena for Highly formatted reports because QuickSight do that**
+
+### QuickSight
+
+- Business Analytics Platform
+- A simple user in an org can use it for data insight
+- Serverless
+- Provides some limited ETL
+- SPICE
+  - Powerful in memory calculation engine for QuickSight
+  - Each user gets 10 GB of SPICE
+  - Scalable
+- USE Cases
+  - Dashboard and KPI
+  - Can connect to different other tools like SaaS
+- Machine Learning Insights: Feature in QuickSight
+  - Anomaly Detection
+  - Forecasting
+  - Auto-narratives: Build Story from data automatically
+- Visual Types
+  - Heat Maps: Correlation
+  - Pie Charts: Aggregation
+  - Tree map: Hierarchical Aggregation: Pie charts within pie charts
+  - Bar Charts: Comparison and distribution
+  - Line Graph: Changes over time
+    \*Scatter Map: For correlation
+
+### Different Visualization Types
+
+![visualization](images/visualization.png)
+
+## Modeling(36%)
+
+### SageMaker
+
+- Amazon SageMaker Studio
+  - An integrated machine learning environment where you can build, train, deploy, and analyze your models all in the same application.
+- Amazon SageMaker Ground Truth
+  - High-quality training datasets by using workers along with machine learning to create labeled datasets.
+- Amazon Augmented AI
+  - Human-in-the-loop reviews
+- Amazon SageMaker Studio Notebooks
+  - The next generation of Amazon SageMaker notebooks that include SSO integration, fast start-up times, and single-click sharing.
+- Preprocessing
+  - Analyze and pre-process data, tackle feature engineering, and evaluate models.
+- Amazon SageMaker Experiments
+  - Experiment management and tracking. You can use the tracked data to reconstruct an experiment, incrementally build on experiments conducted by peers, and trace model lineage for compliance and audit verifications.
+- Amazon SageMaker Debugger
+  - Inspect training parameters and data throughout the training process. Automatically detect and alert users to commonly occurring errors such as parameter values getting too large or small.
+  - Custom rules to detect unwanted conditions while training
+- Amazon SageMaker Autopilot
+  - Users without machine learning knowledge can quickly build classification and regression models.
+- Reinforcement Learning
+  - Maximize the long-term reward that an agent receives as a result of its actions.
+- Batch Transform
+  - Preprocess datasets, run inference when you don't need a persistent endpoint
+  - To get predictions for an entire dataset, use Amazon SageMaker batch transform.
+- Amazon SageMaker Model Monitor
+  - Monitor and analyze models in production (endpoints) to detect data drift and deviations in model quality.
+- Amazon SageMaker Neo
+  - Train machine learning models once, then run anywhere in the cloud and at the edge.
+- Amazon SageMaker Elastic Inference
+  - Speed up the throughput and decrease the latency of getting real-time inferences.
+  - Attach low cost GPU-powered acceleration to EC2, SM instances or ECS tasks.
+  - scale the amount of inference acceleration up and down using Amazon EC2 Auto Scaling groups
+  - Reduce cost of inference by 70%
+
+### Built-in Algorithms/Services
+
+#### Factorization Machines Algorithm
+
+- General purpose supervised learning algo that can be used
+  Classification
+- Binary classification problem, the algorithm predicts a score and a label
+- Regression
+- It is good for tasks dealing with High Dimensional Sparse Dataset.
+- Recommended training and inference with CPU instances for both sparse and dense datasets
+- Example use case: click prediction and item recommendations
+
+#### Linear Learner Algorithm
+
+- Supervised learning algorithm
+- Used for classification and regression problem
+  - Use threshold function for classification
+  - Can do binary and multi-class
+- Mail campaign, can classify digits
+- Inference format: Classification model: score and class
+- **Data must be normalized**
+- By default score can be interpreted as probabilities because loss is Logistics for binary and softmax for multiclass classification
+- If loss is set to hinge_loss, then the score cannot be interpreted as a probability. This is because hinge loss corresponds to a Support Vector Classifier, which does not produce probability estimates.
+- Steps:
+  - Preporcess: For best results, ensure your data is shuffled before training. Training with unshuffled data may cause training to fail.
+  - It has a normalization option that could be used to normalize data before training.
+  - Normalization is enabled by default for both features and labels for regression.
+  - Train
+    - SGD for optimization by default
+    - supports both recordIO-wrapped protobuf(Float32 only) and CSV formats, File and Pipe mode( stream in from S3 for large data)
+    - When its taking to long to start with training that means data is not loaded and there we can use Pipe Mode
+- By default, the linear learner algorithm tunes hyperparameters by training multiple models in parallel.
+- Training: Multi GPU does not help, though single and multi machine CPU and GPU could be used
+
+**Important Hyperparameters**
+
+- **Optimizer:**
+  - _auto_—The default value.
+  - _sgd—Stochastic_ gradient descent.
+  - _adam_—Adaptive momentum estimation
+  - _rmsprop_—A gradient-based optimization technique that uses a moving average of squared gradients to normalize the gradient
+  - _Default value_: auto. The default setting for auto is adam.
+- **Positive_example_weight_mult**
+  - The weight assigned to positive examples when training a binary classifier
+  - If you want the algorithm to choose a weight so that errors in classifying negative vs. positive examples have equal impact on training loss, specify balanced.
+  - If you want the algorithm to choose the weight that optimizes performance, specify auto.
+- **Loss**
+  - If the _predictor_type_ is set to _regressor_, the available options are
+    - Auto: The default value for auto is squared_loss.
+    - Squared_loss
+    - Absolute_loss
+    - Eps_insensitive_squared_loss
+    - Eps_insensitive_absolute_loss
+    - Quantile_loss
+    - huber_loss.
+  - If the _predictor_type_ is set to _binary_classifier_, the available options are
+    - _Auto_: The default value for auto is logistic.
+    - Logistic
+    - hinge_loss
+  - If the _predictor_type_ is set to _multiclass_classifier_, the available options are
+    - _Auto_: The default value for auto is softmax_loss.
+    - softmax_loss
+
+## Model Deployment (20%)
+
+![SageMaker](images/sagemaker-architecture.png)
