@@ -436,6 +436,138 @@ Use AWS Data Pipeline to archive your web server's logs to Amazon S3 each day an
     - _Auto_: The default value for auto is softmax_loss.
     - softmax_loss
 
-## Model Deployment (20%)
+#### XGBoost
+
+As a framework: XGBoost algorithm can be used as a built-in algorithm or as a framework such as TensorFlow
+
+- more flexible than using it as a built-in algorithm
+  enables more advanced scenarios that allow pre-processing and post-processing scripts to be incorporated into your training script.
+
+- Newer version(0.9) because inbuilt has old one(0.72 )
+- We have to specify framework version while using it, not set default
+- Feature importance is defined only for base learner or tree booster, not defined for linear learner
+- **Inference point built using XGBoost only support test/csv or text/libsvm
+  **
+  **Hyperparameter**
+
+## Machine Learning Implementation and Operation (20%)
 
 ![SageMaker](images/sagemaker-architecture.png)
+
+**Training Data Format**
+
+- To use data in CSV format for training, in the input data channel specification, specify text/csv as the ContentType.
+- Amazon SageMaker requires that a CSV file doesn't have a header record and that the target variable is in the first column
+- To run unsupervised learning algorithms that don't have a target, specify the number of label columns in the content type. For example, in this case 'text/csv;label_size=0'
+- Most Amazon SageMaker algorithms work best when you use the optimized protobuf recordIO format for the training data.
+- Using this format allows you to take advantage of Pipe mode when training the algorithms that support it
+- _Pipe Mode_
+  - In Pipe mode, your training job streams data directly from Amazon S3.
+  - Streaming can provide faster start times for training jobs and better throughput.
+  - It reduces the size of the Amazon Elastic Block Store volumes for your training instances.
+  - Pipe mode needs only enough disk space to store your final model artifacts
+- _File Mode_
+  - loads all of your data from Amazon Simple Storage Service (Amazon S3) to the training instance volumes.
+  - File mode needs disk space to store both your final model artifacts and your full training dataset
+- **All models in SageMaker is hosted in a docker containers**
+- **Distributed training via Horovod for Tensorflow**
+- Use Production Variant to test multiple model on live traffic (first test with 5% and then ramp up to 100% if everythings works well)
+
+### Inference pipeline
+
+- Sagemaker inference pipeline allows user to bundle and export pre and post processing steps from training process and deploy them as inference pipeline
+- It is fully managed service
+- Inference pipeline are immutable
+- Use *UpdateEndpoint API *to change a running inference pipeline
+
+### How Amazon SageMaker Runs Custom (not built in model) Inference Image
+
+#### Load model artifacts
+
+- In your CreateModel request, the container definition includes the ModelDataUrl parameter, which identifies the S3 location where model artifacts are stored.
+- It copies the artifacts to the /opt/ml/model directory for use by your inference code
+- Set environment in docker file by setting SAGEMAKER_PROGRAM train.py
+- SAGEMAKER_PROGRAM train.py defines train.py as the name of the entrypoint script that is located in the /opt/ml/code folder for the container. This is the only environmental variable that you must specify when you are using your own container.
+- The ModelDataUrl must point to a tar.gz file. Otherwise, Amazon SageMaker won't download the file.
+
+#### Serve Requests
+
+- Containers need to implement a web server that responds to /invocations and /ping on port 8080
+
+**_How Container respond to Inference Request_**
+
+- To obtain inferences, the client application sends a POST request to the Amazon SageMaker endpoint
+- Amazon SageMaker strips all POST headers except those supported by InvokeEndpoint. Amazon SageMaker might add additional headers. Inference containers must be able to safely ignore these additional headers.
+- To receive inference requests, the container must have a web server listening on port 8080 and must accept POST requests to the /invocations endpoint.
+- **A customer's model containers must accept socket connection requests within 250 ms.**
+- **A customer's model containers must respond to requests within 60 seconds**. The model itself can have a maximum processing time of 60 seconds before responding to the /invocations. If your model is going to take 50-60 seconds of processing time, the SDK socket timeout should be set to be 70 seconds
+
+**_How Container Should Respond to Health Check (Ping) Requests_**
+
+- GET requests to the /ping endpoint
+- The simplest requirement on the container is to respond with an HTTP 200 status code and an empty body. This indicates to Amazon SageMaker that the container is ready to accept inference requests at the /invocations endpoint.
+
+### SageMaker on the Edge
+
+- Amazon Neo for Edge devices.
+- Train on AWS and compile with Neo that could further used with GreenGrass
+  Amazon GreenGrass for IoT devices
+
+### SageMaker Security
+
+#### Secure model building data
+
+1. Use Encrypted S3 for ML storage and use KMS key to Sagemaker while communicating with different services such as notebooks, processing jobs, training jobs, hyperparameter tuning jobs, batch transform jobs, and endpoints
+2. How do different services handle security?
+   - Processing, batch transform, and training job containers; when the job completes output is uploaded to S3 using KMS Key and instance is torn down
+   - Sagemaker automatically saves Notebook data in ML storage volume /home/ec2-user/SageMaker
+3. Give IAM permission to SageMaker to access
+
+_How Amazon SageMaker works with IAM?_
+
+- Amazon SageMaker doesn't support service-linked roles
+- Amazon SageMaker does not support resource-based policies
+- Authorization based on SageMaker Tags
+
+#### Secure Transit Data
+
+_How to secure internode training communications and what are their implications?_
+
+- Enable internode encryption (TLS 1.2)
+  - Increase training time and cost. Especially for distributed deep learning algorithms.
+  - Training time for built-in algorithms such as XGBoost, DeepAR and linear learner are not affected
+- There is no internode communication for batch processing
+
+#### Infrastructure Security
+
+1. If you disable direct internet access, the notebook instance won't be able to train or host models unless your VPC has an interface endpoint (PrivateLink) or a NAT gateway and your security groups allow outbound connections.
+2. As a root user of Notebook, users have access for installing packages and other pertinent software. To limit the access, grant a user access to a notebook with an IAM policy
+
+**Training and Inference Containers Run in Internet Free Mode**
+
+- Amazon SageMaker training and deployed inference containers are internet-enabled by default.
+- Use network isolation to restrict internet access
+- Use network isolation with VPC
+  - In this scenario, download and upload of customer data and model artifacts are routed via your VPC subnet.
+  - However, the training and inference containers themselves continue to be isolated from the network, and do not have access to any resource within your VPC or on the internet.
+
+#### SageMaker and VPC Configuration
+
+_IT IS VERY IMP TO UNDERSTAND THIS CONCEPT, THERE WERE 4-5 QUESTIONS RELATED TO THIS CONCEPT_
+
+- Amazon SageMaker notebook instances can be launched with or without your [Virtual Private Cloud (VPC)](https://aws.amazon.com/vpc/) attached.
+- When launched with your VPC attached, the notebook can either be configured with or without direct internet access.
+- _With VPC and Direct Internet Access_
+  - SageMaker provides a network interface that allows the notebook to communicate with the internet through a VPC managed by Amazon SageMaker.
+  - Traffic to Gateway VPC Endpoints like Amazon S3 and DynamoDB will go through the public internet
+  - Traffic to Interface VPC Endpoints will still go through your VPC.
+  - If you want to use Gateway VPC Endpoints, you may want to disable direct internet access
+- _With VPC and without Internet Access_
+  - the notebook instance can still be configured to access the internet
+  - It needs to either be in a private subnet with a NAT or to access the internet back through a virtual private gateway.
+
+#### Deployment best practices
+
+- Create robust endpoints while hosting models. to achieve more reliable performances use more small Instance Types in different AZ to host endpoints
+  - Distribute instances across multiple Availability zones
+  - If you are using VPC, configure VPC with at least two subnets each in different Availability zones
